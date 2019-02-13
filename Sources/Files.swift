@@ -992,12 +992,12 @@ public class FileSystemIterator<T: FileSystem.Item>: IteratorProtocol where T: F
 
 // MARK: - Private
 
-private extension FileSystem.Item {
+public extension FileSystem.Item {
     enum Kind: CustomStringConvertible {
         case file
         case folder
         
-        var description: String {
+        public var description: String {
             switch self {
             case .file:
                 return "File"
@@ -1013,7 +1013,7 @@ private extension FileSystem.Item {
     }
 }
 
-private extension FileManager {
+public extension FileManager {
     func itemKind(atPath path: String) -> FileSystem.Item.Kind? {
         var objCBool: ObjCBool = false
         
