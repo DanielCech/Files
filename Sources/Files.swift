@@ -36,7 +36,7 @@ import Foundation
  */
 public class FileSystem {
     fileprivate let fileManager: FileManager
-    
+
     /**
      *  Class that represents an item that's stored by a file system
      *
@@ -51,7 +51,7 @@ public class FileSystem {
             case empty
             /// Thrown when an item of the expected type wasn't found for a given path (contains the path)
             case invalid(String)
-            
+
             /// Operator used to compare two instances for equality
             public static func ==(lhs: PathError, rhs: PathError) -> Bool {
                 switch lhs {
@@ -71,7 +71,7 @@ public class FileSystem {
                     }
                 }
             }
-            
+
             /// A string describing the error
             public var description: String {
                 switch self {
@@ -82,7 +82,7 @@ public class FileSystem {
                 }
             }
         }
-        
+
         /// Error type used for failed operations run on files or folders
         public enum OperationError: Error, Equatable, CustomStringConvertible {
             /// Thrown when a file or folder couldn't be renamed (contains the item)
@@ -93,7 +93,7 @@ public class FileSystem {
             case copyFailed(Item)
             /// Thrown when a file or folder couldn't be deleted (contains the item)
             case deleteFailed(Item)
-            
+
             /// Operator used to compare two instances for equality
             public static func ==(lhs: OperationError, rhs: OperationError) -> Bool {
                 switch lhs {
@@ -143,7 +143,7 @@ public class FileSystem {
                     }
                 }
             }
-            
+
             /// A string describing the error
             public var description: String {
                 switch self {
@@ -158,78 +158,78 @@ public class FileSystem {
                 }
             }
         }
-        
+
         /// Operator used to compare two instances for equality
         public static func ==(lhs: Item, rhs: Item) -> Bool {
             guard lhs.kind == rhs.kind else {
                 return false
             }
-            
+
             return lhs.path == rhs.path
         }
-        
+
         /// The path of the item, relative to the root of the file system
         public private(set) var path: String
-        
+
         /// The name of the item (including any extension)
         public private(set) var name: String
-        
+
         /// The name of the item (excluding any extension)
         public var nameExcludingExtension: String {
             guard let `extension` = `extension` else {
                 return name
             }
-            
+
             let endIndex = name.index(name.endIndex, offsetBy: -`extension`.count - 1)
             return String(name[..<endIndex])
         }
-        
+
         /// Any extension that the item has
         public var `extension`: String? {
             let components = name.components(separatedBy: ".")
-            
+
             guard components.count > 1 else {
                 return nil
             }
-            
+
             return components.last
         }
-        
+
         /// The date when the item was last modified
         public private(set) lazy var modificationDate: Date = self.loadModificationDate()
-        
+
         /// The folder that the item is contained in, or `nil` if this item is the root folder of the file system
         public var parent: Folder? {
             return fileManager.parentPath(for: path).flatMap { parentPath in
                 return try? Folder(path: parentPath, using: fileManager)
             }
         }
-        
+
         /// A string describing the item
         public var description: String {
             return "\(kind)(name: \(name), path: \(path))"
         }
-        
+
         fileprivate let kind: Kind
         fileprivate let fileManager: FileManager
-        
-        fileprivate init(path: String, kind: Kind, using fileManager: FileManager) throws {
+
+        public init(path: String, kind: Kind, using fileManager: FileManager) throws {
             guard !path.isEmpty else {
                 throw PathError.empty
             }
-            
+
             let path = try fileManager.absolutePath(for: path)
-            
+
             guard fileManager.itemKind(atPath: path) == kind else {
                 throw PathError.invalid(path)
             }
-            
+
             self.path = path
             self.fileManager = fileManager
             self.kind = kind
-            
+
             let pathComponents = path.pathComponents
-            
+
             switch kind {
             case .file:
                 self.name = pathComponents.last!
@@ -237,7 +237,7 @@ public class FileSystem {
                 self.name = pathComponents[pathComponents.count - 2]
             }
         }
-        
+
         /**
          *  Rename the item
          *
@@ -250,35 +250,35 @@ public class FileSystem {
             guard let parent = parent else {
                 throw OperationError.renameFailed(self)
             }
-            
+
             var newName = newName
-            
+
             if keepExtension {
                 if let `extension` = `extension` {
                     let extensionString = ".\(`extension`)"
-                    
+
                     if !newName.hasSuffix(extensionString) {
                         newName += extensionString
                     }
                 }
             }
-            
+
             var newPath = parent.path + newName
-            
+
             if kind == .folder && !newPath.hasSuffix("/") {
                 newPath += "/"
             }
-            
+
             do {
                 try fileManager.moveItem(atPath: path, toPath: newPath)
-                
+
                 name = newName
                 path = newPath
             } catch {
                 throw OperationError.renameFailed(self)
             }
         }
-        
+
         /**
          *  Move this item to a new folder
          *
@@ -288,11 +288,11 @@ public class FileSystem {
          */
         public func move(to newParent: Folder) throws {
             var newPath = newParent.path + name
-            
+
             if kind == .folder && !newPath.hasSuffix("/") {
                 newPath += "/"
             }
-            
+
             do {
                 try fileManager.moveItem(atPath: path, toPath: newPath)
                 path = newPath
@@ -300,7 +300,7 @@ public class FileSystem {
                 throw OperationError.moveFailed(self)
             }
         }
-        
+
         /**
          *  Delete the item from disk
          *
@@ -316,22 +316,22 @@ public class FileSystem {
             }
         }
     }
-    
+
     /// A reference to the temporary folder used by this file system
     public var temporaryFolder: Folder {
         return try! Folder(path: NSTemporaryDirectory(), using: fileManager)
     }
-    
+
     /// A reference to the current user's home folder
     public var homeFolder: Folder {
         return try! Folder(path: ProcessInfo.processInfo.homeFolderPath, using: fileManager)
     }
-    
+
     // A reference to the folder that is the current working directory
     public var currentFolder: Folder {
         return try! Folder(path: "")
     }
-    
+
     /**
      *  Initialize an instance of this class
      *
@@ -340,7 +340,7 @@ public class FileSystem {
     public init(using fileManager: FileManager = .default) {
         self.fileManager = fileManager
     }
-    
+
     /**
      *  Create a new file at a given path
      *
@@ -353,11 +353,11 @@ public class FileSystem {
      */
     @discardableResult public func createFile(at path: String, contents: Data = Data()) throws -> File {
         let path = try fileManager.absolutePath(for: path)
-        
+
         guard let parentPath = fileManager.parentPath(for: path) else {
             throw File.Error.writeFailed
         }
-        
+
         do {
             let index = path.index(path.startIndex, offsetBy: parentPath.count + 1)
             let name = String(path[index...])
@@ -366,7 +366,7 @@ public class FileSystem {
             throw File.Error.writeFailed
         }
     }
-    
+
     /**
      *  Either return an existing file, or create a new one, at a given path.
      *
@@ -381,10 +381,10 @@ public class FileSystem {
         if let existingFile = try? File(path: path, using: fileManager) {
             return existingFile
         }
-        
+
         return try createFile(at: path, contents: contents)
     }
-    
+
     /**
      *  Create a new folder at a given path
      *
@@ -404,7 +404,7 @@ public class FileSystem {
             throw Folder.Error.creatingFolderFailed
         }
     }
-    
+
     /**
      *  Either return an existing folder, or create a new one, at a given path
      *
@@ -417,7 +417,7 @@ public class FileSystem {
         if let existingFolder = try? Folder(path: path, using: fileManager) {
             return existingFolder
         }
-        
+
         return try createFolder(at: path)
     }
 }
@@ -434,7 +434,7 @@ public final class File: FileSystem.Item, FileSystemIterable {
         case writeFailed
         /// Thrown when a file couldn't be read, either because it was malformed or because it has been deleted
         case readFailed
-        
+
         /// A string describing the error
         public var description: String {
             switch self {
@@ -445,7 +445,7 @@ public final class File: FileSystem.Item, FileSystemIterable {
             }
         }
     }
-    
+
     /**
      *  Initialize an instance of this class with a path pointing to a file
      *
@@ -458,7 +458,7 @@ public final class File: FileSystem.Item, FileSystemIterable {
     public init(path: String, using fileManager: FileManager = .default) throws {
         try super.init(path: path, kind: .file, using: fileManager)
     }
-    
+
     /**
      *  Read the data contained within this file
      *
@@ -471,7 +471,7 @@ public final class File: FileSystem.Item, FileSystemIterable {
             throw Error.readFailed
         }
     }
-    
+
     /**
      *  Read the data contained within this file, and convert it to a string
      *
@@ -481,10 +481,10 @@ public final class File: FileSystem.Item, FileSystemIterable {
         guard let string = try String(data: read(), encoding: encoding) else {
             throw Error.readFailed
         }
-        
+
         return string
     }
-    
+
     /**
      *  Read the data contained within this file, and convert it to an int
      *
@@ -494,10 +494,10 @@ public final class File: FileSystem.Item, FileSystemIterable {
         guard let int = try Int(readAsString()) else {
             throw Error.readFailed
         }
-        
+
         return int
     }
-    
+
     /**
      *  Write data to the file, replacing its current content
      *
@@ -512,7 +512,7 @@ public final class File: FileSystem.Item, FileSystemIterable {
             throw Error.writeFailed
         }
     }
-    
+
     /**
      *  Write a string to the file, replacing its current content
      *
@@ -525,10 +525,10 @@ public final class File: FileSystem.Item, FileSystemIterable {
         guard let data = string.data(using: encoding) else {
             throw Error.writeFailed
         }
-        
+
         try write(data: data)
     }
-    
+
     /**
      *  Append data to the end of the file
      *
@@ -546,7 +546,7 @@ public final class File: FileSystem.Item, FileSystemIterable {
             throw Error.writeFailed
         }
     }
-    
+
     /**
      *  Append a string to the end of the file
      *
@@ -559,10 +559,10 @@ public final class File: FileSystem.Item, FileSystemIterable {
         guard let data = string.data(using: encoding) else {
             throw Error.writeFailed
         }
-        
+
         try append(data: data)
     }
-    
+
     /**
      *  Copy this file to a new folder
      *
@@ -572,7 +572,7 @@ public final class File: FileSystem.Item, FileSystemIterable {
      */
     @discardableResult public func copy(to folder: Folder) throws -> File {
         let newPath = folder.path + name
-        
+
         do {
             try fileManager.copyItem(atPath: path, toPath: newPath)
             return try File(path: newPath)
@@ -592,10 +592,10 @@ public final class Folder: FileSystem.Item, FileSystemIterable {
     public enum Error: Swift.Error, CustomStringConvertible {
         /// Thrown when a folder couldn't be created
         case creatingFolderFailed
-        
+
         @available(*, deprecated: 1.4.0, renamed: "creatingFolderFailed")
         case creatingSubfolderFailed
-        
+
         /// A string describing the error
         public var description: String {
             switch self {
@@ -606,32 +606,32 @@ public final class Folder: FileSystem.Item, FileSystemIterable {
             }
         }
     }
-    
+
     /// The sequence of files that are contained within this folder (non-recursive)
     public var files: FileSystemSequence<File> {
         return makeFileSequence()
     }
-    
+
     /// The sequence of folders that are subfolers of this folder (non-recursive)
     public var subfolders: FileSystemSequence<Folder> {
         return makeSubfolderSequence()
     }
-    
+
     /// A reference to the folder that is the current working directory
     public static var current: Folder {
         return FileSystem(using: .default).currentFolder
     }
-    
+
     /// A reference to the current user's home folder
     public static var home: Folder {
         return FileSystem(using: .default).homeFolder
     }
-    
+
     /// A reference to the temporary folder used by this file system
     public static var temporary: Folder {
         return FileSystem(using: .default).temporaryFolder
     }
-    
+
     /**
      *  Initialize an instance of this class with a path pointing to a folder
      *
@@ -643,18 +643,18 @@ public final class Folder: FileSystem.Item, FileSystemIterable {
      */
     public init(path: String, using fileManager: FileManager = .default) throws {
         var path = path
-        
+
         if path.isEmpty {
             path = fileManager.currentDirectoryPath
         }
-        
+
         if !path.hasSuffix("/") {
             path += "/"
         }
-        
+
         try super.init(path: path, kind: .folder, using: fileManager)
     }
-    
+
     /**
      *  Return a file with a given name that is contained in this folder
      *
@@ -665,7 +665,7 @@ public final class Folder: FileSystem.Item, FileSystemIterable {
     public func file(named fileName: String) throws -> File {
         return try File(path: path + fileName, using: fileManager)
     }
-    
+
     /**
      *  Return a file at a given path that is contained in this folder's tree
      *
@@ -676,7 +676,7 @@ public final class Folder: FileSystem.Item, FileSystemIterable {
     public func file(atPath filePath: String) throws -> File {
         return try File(path: path + filePath, using: fileManager)
     }
-    
+
     /**
      *  Return whether this folder contains a file with a given name
      *
@@ -685,7 +685,7 @@ public final class Folder: FileSystem.Item, FileSystemIterable {
     public func containsFile(named fileName: String) -> Bool {
         return (try? file(named: fileName)) != nil
     }
-    
+
     /**
      *  Return a folder with a given name that is contained in this folder
      *
@@ -696,7 +696,7 @@ public final class Folder: FileSystem.Item, FileSystemIterable {
     public func subfolder(named folderName: String) throws -> Folder {
         return try Folder(path: path + folderName, using: fileManager)
     }
-    
+
     /**
      *  Return a folder at a given path that is contained in this folder's tree
      *
@@ -707,7 +707,7 @@ public final class Folder: FileSystem.Item, FileSystemIterable {
     public func subfolder(atPath folderPath: String) throws -> Folder {
         return try Folder(path: path + folderPath, using: fileManager)
     }
-    
+
     /**
      *  Return whether this folder contains a subfolder with a given name
      *
@@ -716,7 +716,7 @@ public final class Folder: FileSystem.Item, FileSystemIterable {
     public func containsSubfolder(named folderName: String) -> Bool {
         return (try? subfolder(named: folderName)) != nil
     }
-    
+
     /**
      *  Create a file in this folder and return it
      *
@@ -729,14 +729,14 @@ public final class Folder: FileSystem.Item, FileSystemIterable {
      */
     @discardableResult public func createFile(named fileName: String, contents data: Data = .init()) throws -> File {
         let filePath = path + fileName
-        
+
         guard fileManager.createFile(atPath: filePath, contents: data, attributes: nil) else {
             throw File.Error.writeFailed
         }
-        
+
         return try File(path: filePath, using: fileManager)
     }
-    
+
     /**
      *  Create a file in this folder and return it
      *
@@ -753,7 +753,7 @@ public final class Folder: FileSystem.Item, FileSystemIterable {
         try file.write(string: contents, encoding: encoding)
         return file
     }
-    
+
     /**
      *  Either return an existing file, or create a new one, for a given name
      *
@@ -767,10 +767,10 @@ public final class Folder: FileSystem.Item, FileSystemIterable {
         if let existingFile = try? file(named: fileName) {
             return existingFile
         }
-        
+
         return try createFile(named: fileName, contents: dataExpression())
     }
-    
+
     /**
      *  Create a subfolder of this folder and return it
      *
@@ -782,7 +782,7 @@ public final class Folder: FileSystem.Item, FileSystemIterable {
      */
     @discardableResult public func createSubfolder(named folderName: String) throws -> Folder {
         let subfolderPath = path + folderName
-        
+
         do {
             try fileManager.createDirectory(atPath: subfolderPath, withIntermediateDirectories: false, attributes: nil)
             return try Folder(path: subfolderPath, using: fileManager)
@@ -790,7 +790,7 @@ public final class Folder: FileSystem.Item, FileSystemIterable {
             throw Error.creatingFolderFailed
         }
     }
-    
+
     /**
      *  Either return an existing subfolder, or create a new one, for a given name
      *
@@ -802,10 +802,10 @@ public final class Folder: FileSystem.Item, FileSystemIterable {
         if let existingFolder = try? subfolder(named: folderName) {
             return existingFolder
         }
-        
+
         return try createSubfolder(named: folderName)
     }
-    
+
     /**
      *  Create a sequence containing the files that are contained within this folder
      *
@@ -817,7 +817,7 @@ public final class Folder: FileSystem.Item, FileSystemIterable {
     public func makeFileSequence(recursive: Bool = false, includeHidden: Bool = false) -> FileSystemSequence<File> {
         return FileSystemSequence(folder: self, recursive: recursive, includeHidden: includeHidden, using: fileManager)
     }
-    
+
     /**
      *  Create a sequence containing the folders that are subfolders of this folder
      *
@@ -829,7 +829,7 @@ public final class Folder: FileSystem.Item, FileSystemIterable {
     public func makeSubfolderSequence(recursive: Bool = false, includeHidden: Bool = false) -> FileSystemSequence<Folder> {
         return FileSystemSequence(folder: self, recursive: recursive, includeHidden: includeHidden, using: fileManager)
     }
-    
+
     /**
      *  Move the contents (both files and subfolders) of this folder to a new parent folder
      *
@@ -840,7 +840,7 @@ public final class Folder: FileSystem.Item, FileSystemIterable {
         try makeFileSequence(includeHidden: includeHidden).forEach { try $0.move(to: newParent) }
         try makeSubfolderSequence(includeHidden: includeHidden).forEach { try $0.move(to: newParent) }
     }
-    
+
     /**
      *  Empty this folder, removing all of its content
      *
@@ -852,7 +852,7 @@ public final class Folder: FileSystem.Item, FileSystemIterable {
         try makeFileSequence(includeHidden: includeHidden).forEach { try $0.delete() }
         try makeSubfolderSequence(includeHidden: includeHidden).forEach { try $0.delete() }
     }
-    
+
     /**
      *  Copy this folder to a new folder
      *
@@ -862,7 +862,7 @@ public final class Folder: FileSystem.Item, FileSystemIterable {
      */
     @discardableResult public func copy(to folder: Folder) throws -> Folder {
         let newPath = folder.path + name
-        
+
         do {
             try fileManager.copyItem(atPath: path, toPath: newPath)
             return try Folder(path: newPath)
@@ -891,46 +891,46 @@ public class FileSystemSequence<T: FileSystem.Item>: Sequence, CustomStringConve
         forEach { _ in count += 1 }
         return count
     }
-    
+
     /// An array containing the names of all the items contained in this sequence. Accessing this causes the sequence to be evaluated.
     public var names: [String] {
         return map { $0.name }
     }
-    
+
     /// The first item of the sequence. Accessing this causes the sequence to be evaluated until an item is found
     public var first: T? {
         return makeIterator().next()
     }
-    
+
     /// The last item of the sequence. Accessing this causes the sequence to be evaluated.
     public var last: T? {
         var item: T?
         forEach { item = $0 }
         return item
     }
-    
+
     private let folder: Folder
     private let recursive: Bool
     private let includeHidden: Bool
     private let fileManager: FileManager
-    
+
     fileprivate init(folder: Folder, recursive: Bool, includeHidden: Bool, using fileManager: FileManager) {
         self.folder = folder
         self.recursive = recursive
         self.includeHidden = includeHidden
         self.fileManager = fileManager
     }
-    
+
     /// Create an iterator to use to iterate over the sequence
     public func makeIterator() -> FileSystemIterator<T> {
         return FileSystemIterator(folder: folder, recursive: recursive, includeHidden: includeHidden, using: fileManager)
     }
-    
+
     /// Move all the items in this sequence to a new folder. See `FileSystem.Item.move(to:)` for more info.
     public func move(to newParent: Folder) throws {
         try forEach { try $0.move(to: newParent) }
     }
-    
+
     public var description: String {
         return map { $0.description }.joined(separator: "\n")
     }
@@ -947,14 +947,14 @@ public class FileSystemIterator<T: FileSystem.Item>: IteratorProtocol where T: F
     }()
     private lazy var childIteratorQueue = [FileSystemIterator]()
     private var currentChildIterator: FileSystemIterator?
-    
+
     fileprivate init(folder: Folder, recursive: Bool, includeHidden: Bool, using fileManager: FileManager) {
         self.folder = folder
         self.recursive = recursive
         self.includeHidden = includeHidden
         self.fileManager = fileManager
     }
-    
+
     /// Advance the iterator to the next element
     public func next() -> T? {
         if itemNames.isEmpty {
@@ -963,29 +963,29 @@ public class FileSystemIterator<T: FileSystem.Item>: IteratorProtocol where T: F
                     return next
                 }
             }
-            
+
             guard !childIteratorQueue.isEmpty else {
                 return nil
             }
-            
+
             currentChildIterator = childIteratorQueue.removeFirst()
             return next()
         }
-        
+
         let nextItemName = itemNames.removeFirst()
-        
+
         guard includeHidden || !nextItemName.hasPrefix(".") else {
             return next()
         }
-        
+
         let nextItemPath = folder.path + nextItemName
         let nextItem = try? T(path: nextItemPath, using: fileManager)
-        
+
         if recursive, let folder = (nextItem as? Folder) ?? (try? Folder(path: nextItemPath))  {
             let child = FileSystemIterator(folder: folder, recursive: true, includeHidden: includeHidden, using: fileManager)
             childIteratorQueue.append(child)
         }
-        
+
         return nextItem ?? next()
     }
 }
@@ -996,7 +996,7 @@ public extension FileSystem.Item {
     enum Kind: CustomStringConvertible {
         case file
         case folder
-        
+
         public var description: String {
             switch self {
             case .file:
@@ -1006,7 +1006,7 @@ public extension FileSystem.Item {
             }
         }
     }
-    
+
     func loadModificationDate() -> Date {
         let attributes = try! fileManager.attributesOfItem(atPath: path)
         return attributes[FileAttributeKey.modificationDate] as! Date
@@ -1016,18 +1016,18 @@ public extension FileSystem.Item {
 public extension FileManager {
     func itemKind(atPath path: String) -> FileSystem.Item.Kind? {
         var objCBool: ObjCBool = false
-        
+
         guard fileExists(atPath: path, isDirectory: &objCBool) else {
             return nil
         }
-        
+
         if objCBool.boolValue {
             return .folder
         }
-        
+
         return .file
     }
-    
+
     func itemNames(inFolderAtPath path: String) -> [String] {
         do {
             return try contentsOfDirectory(atPath: path).sorted()
@@ -1035,67 +1035,67 @@ public extension FileManager {
             return []
         }
     }
-    
+
     func absolutePath(for path: String) throws -> String {
         if path.hasPrefix("/") {
             return try pathByFillingInParentReferences(for: path)
         }
-        
+
         if path.hasPrefix("~") {
             let prefixEndIndex = path.index(after: path.startIndex)
-            
+
             let path = path.replacingCharacters(
                 in: path.startIndex..<prefixEndIndex,
                 with: ProcessInfo.processInfo.homeFolderPath
             )
-            
+
             return try pathByFillingInParentReferences(for: path)
         }
-        
+
         return try pathByFillingInParentReferences(for: path, prependCurrentFolderPath: true)
     }
-    
+
     func parentPath(for path: String) -> String? {
         guard path != "/" else {
             return nil
         }
-        
+
         var pathComponents = path.pathComponents
-        
+
         if path.hasSuffix("/") {
             pathComponents.removeLast(2)
         } else {
             pathComponents.removeLast()
         }
-        
+
         return pathComponents.joined(separator: "/")
     }
-    
+
     func pathByFillingInParentReferences(for path: String, prependCurrentFolderPath: Bool = false) throws -> String {
         var path = path
         var filledIn = false
-        
+
         while let parentReferenceRange = path.range(of: "../") {
             let currentFolderPath = String(path[..<parentReferenceRange.lowerBound])
-            
+
             guard let currentFolder = try? Folder(path: currentFolderPath) else {
                 throw FileSystem.Item.PathError.invalid(path)
             }
-            
+
             guard let parent = currentFolder.parent else {
                 throw FileSystem.Item.PathError.invalid(path)
             }
-            
+
             path = path.replacingCharacters(in: path.startIndex..<parentReferenceRange.upperBound, with: parent.path)
             filledIn = true
         }
-        
+
         if prependCurrentFolderPath {
             guard filledIn else {
                 return currentDirectoryPath + "/" + path
             }
         }
-        
+
         return path
     }
 }
@@ -1125,16 +1125,16 @@ extension FileSystem {
         guard let url = try? fileManager.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false) else {
             return nil
         }
-        
+
         return try? Folder(path: url.path, using: fileManager)
     }
-    
+
     /// A reference to the library folder used by this file system.
     public var libraryFolder: Folder? {
         guard let url = try? fileManager.url(for: .libraryDirectory, in: .userDomainMask, appropriateFor: nil, create: false) else {
             return nil
         }
-        
+
         return try? Folder(path: url.path, using: fileManager)
     }
 }
