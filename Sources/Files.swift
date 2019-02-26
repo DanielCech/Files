@@ -981,10 +981,17 @@ public class FileSystemIterator<T: FileSystem.Item>: IteratorProtocol where T: F
         let nextItemPath = folder.path + nextItemName
         let nextItem = try? T(path: nextItemPath, using: fileManager)
 
-        if recursive, let folder = (nextItem as? Folder) ?? (try? Folder(path: nextItemPath))  {
-            let child = FileSystemIterator(folder: folder, recursive: true, includeHidden: includeHidden, using: fileManager)
-            childIteratorQueue.append(child)
+        if recursive, fileManager.itemKind(atPath: nextItemPath) == .folder {
+            if let folder = try? Folder(path: nextItemPath) {
+                let child = FileSystemIterator(folder: folder, recursive: true, includeHidden: includeHidden, using: fileManager)
+                childIteratorQueue.append(child)
+            }
         }
+
+//        if recursive, let folder = (nextItem as? Folder) ?? (try? Folder(path: nextItemPath))  {
+//            let child = FileSystemIterator(folder: folder, recursive: true, includeHidden: includeHidden, using: fileManager)
+//            childIteratorQueue.append(child)
+//        }
 
         return nextItem ?? next()
     }
